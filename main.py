@@ -36,13 +36,14 @@ def ant_algorithm(num_ants: int, iterations: int, graph: dict):
     '''
     # CHECKing if there is any hamiltonian cycle in graph!!
     # Based on "Theorem of Dirak":
+    dirak_theorem = True
     n_vertices = len(graph)
     half = n_vertices / 2
     if n_vertices >= 3:
         for _ , connections in graph.items():
             vertex_degree = len(connections)
             if vertex_degree < half:
-                return
+                dirak_theorem = False
 
 
 
