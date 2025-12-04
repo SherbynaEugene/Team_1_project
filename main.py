@@ -162,5 +162,25 @@ def ant_algorithm(num_ants: int, iterations: int, graph: dict):
     else:
         print("Гамільтоновий цикл не знайдено")
 
+def connectivity(graph: dict)->bool:
+    """
+    Checks connectivity in the graph.
+
+    :param graph: a dictionary, representing a graph
+    returns: True if graph is connected, False if else
+    """
+    visited=set()
+    def dfs(v):
+        visited.add(v)
+        for a in graph[v]:
+            if a not in visited:
+                dfs(a)
+    for v in graph:
+        if v not in visited:
+            dfs(v)
+    if len(graph)==len(visited):
+        return True
+    return False
+
 
 ant_algorithm(3, 20, file_reader("graph.txt"))
