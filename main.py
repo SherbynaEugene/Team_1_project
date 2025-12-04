@@ -7,7 +7,7 @@ def file_reader(filename: str) -> dict:
     '''
     Reading a given file with the undirected graph
     :args: filename of file with undirected graph
-    :return: dictionary where keys are vertices 
+    :return: dictionary where keys are vertices
         and values are lists of all other vertices conected to the key one
     '''
     with open(filename, 'r' , encoding='utf-8') as f:
@@ -31,7 +31,7 @@ def file_reader(filename: str) -> dict:
 
 def ant_algorithm(num_ants: int, iterations: int, graph: dict):
     '''
-    Algorithm made for searching the shortes way for ant to go 
+    Algorithm made for searching the shortes way for ant to go
     which is also a hamiltonian cycle.
     '''
     # CHECKing if there is any hamiltonian cycle in graph!!
@@ -76,8 +76,8 @@ def ant_algorithm(num_ants: int, iterations: int, graph: dict):
 
     def choose_next_vertice(current: int, visited: list[int]) -> None | int:
         '''
-        Function made for calculating and making ant's choose 
-        based on factors: 
+        Function made for calculating and making ant's choose
+        based on factors:
         1. weight of the edge
         2. pheromone amount of the edge
         :arg1: current = vertice where ant is
@@ -103,7 +103,7 @@ def ant_algorithm(num_ants: int, iterations: int, graph: dict):
         :arg1: random start vertice
         :return: None if there is NO way back to start vertice
                 path if there IS way back to start vertice
-        
+
         '''
         path = [start]
         visited = set(path)
