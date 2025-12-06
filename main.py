@@ -1,7 +1,7 @@
 '''An example of using the ant algorithm'''
 import random
-
-
+import pygame
+import sys
 
 def file_reader(filename: str) -> dict:
     '''
@@ -125,6 +125,7 @@ def ant_algorithm(num_ants: int, iterations: int, graph: dict):
     best_length = float('inf')
 
     for it in range(iterations):
+        print(graph)
         print(f"Ітерація {it+1}")
         all_paths = []
         for ant in range(num_ants):
@@ -155,6 +156,7 @@ def ant_algorithm(num_ants: int, iterations: int, graph: dict):
 
         print("Феромони:", {k: round(v,2) for k,v in pheromone.items()})
         print("-"*50)
+        yield {"iteration": it+1, "best_path": best_path, "pheromone": pheromone.copy()}
 
     if best_path:
         print("Найкращий знайдений Гамільтоновий цикл:", best_path)
@@ -184,3 +186,69 @@ def connectivity(graph: dict)->bool:
 
 
 ant_algorithm(3, 20, file_reader("graph.txt"))
+
+#VISUALKA
+WIDTH, HEIGHT = 800, 800
+pygame.init()
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Ant Algorithm Visualization")
+clock= pygame.time.Clock()
+font_num=pygame.font.Font(None, 40)
+font_text=pygame.font.Font(None, 40)
+
+def node_position(graph_, root_node=1):
+    level_spacing=100
+    sibling_spacing=120
+    start_x=100
+    start_y=100
+    node_positions = {}
+    visited = set()
+
+    def dfs(node, depth, index):
+        x = start_x + index * sibling_spacing
+        y = start_y + depth * level_spacing
+        node_positions[node] = (x, y)
+        visited.add(node)
+
+        neighbors = [n for n in graph_[node] if n not in visited]
+        for ind, neighbor in enumerate(neighbors):
+            dfs(neighbor, depth+1, ind)
+
+    dfs(root_node, 0, 0)
+    return node_positions
+
+def draw_nodes(surface_node, positions_nodes:dict):
+    for node, pos in positions_nodes.items():
+        pygame.draw.circle(surface_node, 'black', pos, 30)
+        pygame.draw.circle(surface_node, 'white', pos, 27)
+        node_num= font_num.render(str(node), True, 'black')
+        surface_node.blit(node_num, (pos[0]-8, pos[1]-12))
+
+def draw_edges(graph_draw, positions_nodes):
+    for node, neighbors in graph_draw.items():
+        for neighbor in neighbors:
+            pygame.draw.line(surface, ('black'), \
+                             positions_nodes[node], positions_nodes[neighbor], 3)
+
+
+graph = file_reader("graph.txt")
+positions = node_position(graph)
+
+surface= pygame.Surface((WIDTH, HEIGHT))
+surface.fill('white')
+
+algo = ant_algorithm(3, 20, graph)
+
+for i, state in enumerate(algo):
+    for event in pygame.event.get():
+        if event.type==pygame.QUIT:
+            pygame.quit()
+            sys.exit()
+
+    screen.blit(surface,(0,0))
+    iter_text=font_text.render(f"Ітерація {i}", True,'black', 'white')
+    surface.blit(iter_text,(400,0))
+    draw_edges(graph, positions)
+    draw_nodes(surface, positions)
+    pygame.display.update()
+    clock.tick(1)
