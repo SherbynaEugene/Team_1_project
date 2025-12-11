@@ -2,6 +2,15 @@
 import random
 import pygame
 import sys
+import argparse
+
+parser = argparse.ArgumentParser(description="Ant Colony Algorithm Visualization")
+
+parser.add_argument('file', type=str, help='Шлях до файлу з графом')
+parser.add_argument('ants', type=int, help='Кількість мурах')
+parser.add_argument('iterations', type=int, help='Кількість ітерацій')
+
+args= parser.parse_args()
 
 def file_reader(filename: str) -> dict:
     '''
@@ -11,11 +20,11 @@ def file_reader(filename: str) -> dict:
         and values are lists of all other vertices conected to the key one
     '''
     with open(filename, 'r' , encoding='utf-8') as f:
-        vertices, edges =[int(item) for item in f.readline().split()]#<- перетворює '5 6\n' в [5, 6]
+        vertices, edges =[int(item) for item in f.readline().split()]
         lines = f.readlines()
     graph = {}
     for line in lines:
-        a_vertice, b_vertice = [int(item) for item in line.split()]  # <-- Те саме
+        a_vertice, b_vertice = [int(item) for item in line.split()]
         if a_vertice not in graph:
             graph[a_vertice] = [b_vertice]
         else:
@@ -25,8 +34,6 @@ def file_reader(filename: str) -> dict:
         else:
             graph[b_vertice].append(a_vertice)
     return graph
-
-
 
 
 def ant_algorithm(num_ants: int, iterations: int, graph: dict):
@@ -45,23 +52,16 @@ def ant_algorithm(num_ants: int, iterations: int, graph: dict):
             if vertex_degree < half:
                 dirak_theorem = False
 
-
-
-
-
-
-    # Start weight for all edges in graph
     weight = {}
     for node, neighbors in graph.items():
         for neighbor in neighbors:
             weight[(node, neighbor)] = 1
 
-    # Start pheromone amount for all edges in graph
     pheromone = {edge: 0.1 for edge in weight}
-
-    alpha = 1       # CONSTant for edge pheromone impact on ant's choose
-    beta = 2        # CONSTant for edge weight impact on ant's choose
-    evaporation = 0.5  # CONSTant for pheramone evaporation
+    edge_visits = {edge: 0 for edge in pheromone}
+    alpha = 1
+    beta = 2
+    evaporation = 0.1
 
     def path_weight(path: list) -> int:
         '''
@@ -110,16 +110,16 @@ def ant_algorithm(num_ants: int, iterations: int, graph: dict):
 
         while len(path) < len(graph):
             next_city = choose_next_vertice(path[-1], visited)
-            if next_city is None:  # немає куди йти
+            if next_city is None:
                 return None
             path.append(next_city)
             visited.add(next_city)
 
         if start in graph[path[-1]]:
-            path.append(start)  # hamiltonian cycle IS found
+            path.append(start)
             return path
         else:
-            return None  # hamiltonian cycle IS NOT found
+            return None
 
     best_path = None
     best_length = float('inf')
@@ -128,35 +128,45 @@ def ant_algorithm(num_ants: int, iterations: int, graph: dict):
         print(graph)
         print(f"Ітерація {it+1}")
         all_paths = []
+        paths_for_visual = []
+        found_cycles = 0
+
         for ant in range(num_ants):
             start = random.choice(list(graph.keys()))
             path = ant_run(start)
             if path is None:
                 print(f"Мурашка {ant+1}: не знайшла Гамільтоновий цикл")
+                paths_for_visual.append([start])
                 continue
+            found_cycles += 1
             length = path_weight(path)
             all_paths.append((path, length))
+            paths_for_visual.append(path)
             print(f"Мурашка {ant+1}: {path} довжина={length}")
 
             if length < best_length:
                 best_length = length
                 best_path = path
+        for path in paths_for_visual:
+            if len(path) == 1:
+                all_paths.append((path, float('inf')))
 
-        # block for evaporation of pheromone
         for edge in pheromone:
             pheromone[edge] *= (1 - evaporation)
-
-        # block for adding pheromone to ant path
         for path, length in all_paths:
-            deposit = 1 / length
-            for i in range(len(path)-1):
-                a, b = path[i], path[i+1]
-                pheromone[(a, b)] += deposit
-                pheromone[(b, a)] += deposit  # undirected graph
+            if length != float('inf'):
+                deposit = 1 / length
+                for i in range(len(path)-1):
+                    a, b = path[i], path[i+1]
+                    pheromone[(a, b)] += deposit
+                    pheromone[(b, a)] += deposit
+                    edge_visits[(a, b)] += 1
+                    edge_visits[(b, a)] += 1
 
         print("Феромони:", {k: round(v,2) for k,v in pheromone.items()})
         print("-"*50)
-        yield {"iteration": it+1, "best_path": best_path, "pheromone": pheromone.copy()}
+        yield {"iteration": it+1, "best_path": best_path, "pheromone": pheromone.copy(), \
+"edge_visits": edge_visits.copy(), "current_paths": paths_for_visual, "found_cycles": found_cycles}
 
     if best_path:
         print("Найкращий знайдений Гамільтоновий цикл:", best_path)
@@ -185,8 +195,6 @@ def connectivity(graph: dict)->bool:
     return False
 
 
-ant_algorithm(3, 20, file_reader("graph.txt"))
-
 #VISUALKA
 WIDTH, HEIGHT = 800, 800
 pygame.init()
@@ -197,10 +205,23 @@ font_num=pygame.font.Font(None, 40)
 font_text=pygame.font.Font(None, 40)
 
 def node_position(graph_, root_node=1):
-    level_spacing=100
-    sibling_spacing=120
-    start_x=100
-    start_y=100
+    n_vertices = len(graph_)
+
+    if n_vertices <= 4:
+        level_spacing = 180
+        sibling_spacing = 200
+    elif n_vertices <= 6:
+        level_spacing = 150
+        sibling_spacing = 160
+    elif n_vertices <= 8:
+        level_spacing = 120
+        sibling_spacing = 140
+    else:
+        level_spacing = 100
+        sibling_spacing = 120
+
+    start_x = 100
+    start_y = 100
     node_positions = {}
     visited = set()
 
@@ -221,34 +242,188 @@ def draw_nodes(surface_node, positions_nodes:dict):
     for node, pos in positions_nodes.items():
         pygame.draw.circle(surface_node, 'black', pos, 30)
         pygame.draw.circle(surface_node, 'white', pos, 27)
-        node_num= font_num.render(str(node), True, 'black')
-        surface_node.blit(node_num, (pos[0]-8, pos[1]-12))
+        node_num = font_num.render(str(node), True, 'black')
+        text_width = node_num.get_width()
+        text_height = node_num.get_height()
 
-def draw_edges(graph_draw, positions_nodes):
-    for node, neighbors in graph_draw.items():
-        for neighbor in neighbors:
-            pygame.draw.line(surface, ('black'), \
-                             positions_nodes[node], positions_nodes[neighbor], 3)
+        surface_node.blit(node_num, (pos[0] - text_width // 2, pos[1] - text_height // 2))
 
+def draw_edges(surface_node, graph_draw, positions_nodes, pheromone):
+    if not pheromone:
+        return
 
-graph = file_reader("graph.txt")
+    drawn = set()
+
+    for u, neighbors in graph_draw.items():
+        for v in neighbors:
+            key = tuple(sorted((u, v)))
+            if key in drawn:
+                continue
+            drawn.add(key)
+            pher_u_v = pheromone.get((u, v), 0.1)
+            pher_v_u = pheromone.get((v, u), 0.1)
+            pher_val = max(pher_u_v, pher_v_u)
+
+            t = (pher_val - 0.1) / (2.0 - 0.1)
+            t = max(0, min(1, t))
+
+            r = 0
+            g = int(255 * t)
+            b = 0
+
+            thickness = int(3 + 5 * t)
+
+            pygame.draw.line(
+                surface_node, (r, g, b),
+                positions_nodes[u], positions_nodes[v], thickness
+            )
+
+graph = file_reader(args.file)
+num_ants= args.ants
+iterations= args.iterations
 positions = node_position(graph)
 
 surface= pygame.Surface((WIDTH, HEIGHT))
 surface.fill('white')
 
-algo = ant_algorithm(3, 20, graph)
+algo = ant_algorithm(num_ants, iterations, graph)
+best_path = None
 
 for i, state in enumerate(algo):
-    for event in pygame.event.get():
-        if event.type==pygame.QUIT:
-            pygame.quit()
-            sys.exit()
+    best_path = state["best_path"]
+    pheromone = state["pheromone"]
+    iteration_num = state["iteration"]
+    edge_visits = state["edge_visits"]
+    current_paths = state["current_paths"]
+    found_cycles = state["found_cycles"]
+    if found_cycles == 0:
+        animation_frames = int(120)
+    else:
+        animation_frames = 300
 
-    screen.blit(surface,(0,0))
-    iter_text=font_text.render(f"Ітерація {i}", True,'black', 'white')
-    surface.blit(iter_text,(400,0))
-    draw_edges(graph, positions)
-    draw_nodes(surface, positions)
-    pygame.display.update()
-    clock.tick(1)
+    for frame in range(animation_frames):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+
+        surface.fill('white')
+
+        iter_text = font_text.render(f"Ітерація {i + 1}", True, 'black')
+        surface.blit(iter_text, (10, 10))
+
+        draw_edges(surface, graph, positions,
+               pheromone=pheromone,
+               edge_visits=edge_visits,
+               iteration=iteration_num,
+               total_iterations=iterations)
+
+        for path in current_paths:
+            if len(path) > 1:
+                progress = frame / animation_frames
+
+                total_edges = len(path) - 1
+                edge_progress = progress * total_edges
+
+                a_index = int(edge_progress)
+                if a_index >= total_edges:
+                    a_index = total_edges - 1
+                b_index = a_index + 1
+
+                t = edge_progress - a_index
+
+                a = positions[path[a_index]]
+                b = positions[path[b_index]]
+
+                x1, y1 = a
+                x2, y2 = b
+                x = x1 + (x2 - x1) * t
+                y = y1 + (y2 - y1) * t
+
+                pygame.draw.circle(surface, (255, 0, 0), (int(x), int(y)), 8)
+            else:
+                pos = positions[path[0]]
+                pygame.draw.circle(surface, (255, 0, 0), pos, 8)
+
+        draw_nodes(surface, positions)
+        screen.blit(surface, (0, 0))
+        pygame.display.update()
+        clock.tick(60)
+
+if best_path is not None:
+    ants = []
+
+    for _ in range(5):
+        ants.append({
+            "path": best_path,
+            "edge": 0,
+            "t": random.random(),
+            "trail": []
+        })
+
+    def move_along_edge(a, b, t):
+        x1, y1 = a
+        x2, y2 = b
+        x = x1 + (x2 - x1) * t
+        y = y1 + (y2 - y1) * t
+        return(x, y)
+
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+
+        surface.fill("white")
+
+        if pheromone:
+            drawn = set()
+            for node, neighbors in graph.items():
+                for neighbor in neighbors:
+                    key = tuple(sorted((node, neighbor)))
+                    if key in drawn:
+                        continue
+                    drawn.add(key)
+
+                    pher_val = max(pheromone.get((node, neighbor), 0.1),
+                                   pheromone.get((neighbor, node), 0.1))
+
+                    t = (pher_val - 0.1) / (2.0 - 0.1)
+                    t = max(0, min(1, t))
+
+                    r = 0
+                    g = int(255 * t)
+                    b = 0
+                    thickness = int(3 + 5 * t)
+
+                    pygame.draw.line(surface, (r, g, b),
+                                   positions[node], positions[neighbor], thickness)
+
+        for i in range(len(best_path)-1):
+            a = best_path[i]
+            b = best_path[i+1]
+            pygame.draw.line(surface, (255, 215, 0),
+                             positions[a], positions[b], 7)
+
+        for ant in ants:
+            a_index = ant["edge"]
+            b_index = a_index + 1
+            if b_index >= len(ant["path"]):
+                b_index = 0
+
+            a = positions[ant["path"][a_index]]
+            b = positions[ant["path"][b_index]]
+            ant_pos = move_along_edge(a, b, ant["t"])
+            pygame.draw.circle(surface, (255, 0, 0), (int(ant_pos[0]), int(ant_pos[1])), 10)
+
+            ant["t"] += 0.02
+            if ant["t"] >= 1:
+                ant["t"] -= 1
+                ant["edge"] = b_index
+
+        draw_nodes(surface, positions)
+        screen.blit(surface, (0, 0))
+        pygame.display.update()
+        clock.tick(60)
+
+pygame.QUIT
