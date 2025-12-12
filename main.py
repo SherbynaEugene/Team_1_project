@@ -23,12 +23,17 @@ def file_reader(filename: str) -> tuple[dict, dict]:
     with open(filename, 'r' , encoding='utf-8') as f:
         vertices, edges = [int(item) for item in f.readline().split()]
         lines = f.readlines()
-    
+        if not lines:
+            print("В графі нема вершин")
+            sys.exit()
     graph = {}
     weights = {}
     
     for line in lines:
         parts = [int(item) for item in line.split()]
+        if len(parts)<3:
+            print("В файлі не усі дані")
+            sys.exit()
         a_vertice, b_vertice, weight = parts[0], parts[1], parts[2]
     
         if a_vertice not in graph:
@@ -52,6 +57,9 @@ def ant_algorithm(num_ants: int, iterations: int, graph: dict, weight: dict):
     Algorithm made for searching the shortest way for ant to go
     which is also a hamiltonian cycle.
     '''
+    if num_ants==0 or iterations==0:
+        print("Введіть валідну кількість мурах/ітерацій (>0)")
+        sys.exit()
     dirak_theorem = True
     n_vertices = len(graph)
     half = n_vertices / 2
@@ -406,7 +414,6 @@ if best_path is not None:
 
         if pheromone:
             drawn = set()
-            
             for node, neighbors in graph.items():
                 for neighbor in neighbors:
                     key = tuple(sorted((node, neighbor)))
@@ -432,7 +439,7 @@ if best_path is not None:
                     edge_weight = weights.get((node, neighbor), weights.get((neighbor, node), 0))
                     mid_x = (positions[node][0] + positions[neighbor][0]) // 2
                     mid_y = (positions[node][1] + positions[neighbor][1]) // 2
-        
+
                     dx = positions[neighbor][0] - positions[node][0]
                     dy = positions[neighbor][1] - positions[node][1]
                     length = (dx**2 + dy**2)**0.5
