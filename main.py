@@ -199,7 +199,9 @@ def connectivity(graph: dict)->bool:
         return True
     return False
 
-
+if not connectivity(graph):
+    print("Граф не зв'язний. Гамільтоновий цикл не існує.")
+    sys.exit()
 #VISUALКА
 WIDTH, HEIGHT = 800, 800
 pygame.init()
