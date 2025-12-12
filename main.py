@@ -207,7 +207,6 @@ def connectivity(graph: dict)->bool:
         return True
     return False
 
-
 #VISUALКА
 WIDTH, HEIGHT = 800, 800
 pygame.init()
