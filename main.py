@@ -204,12 +204,8 @@ def connectivity(graph: dict)->bool:
         for a in graph[v]:
             if a not in visited:
                 dfs(a)
-    for v in graph:
-        if v not in visited:
-            dfs(v)
-    if len(graph)==len(visited):
-        return True
-    return False
+    dfs(next(iter(graph)))
+    return len(graph)==len(visited)
 
 #VISUALКА
 WIDTH, HEIGHT = 800, 800
@@ -316,6 +312,9 @@ def draw_edges(surface_node, graph_draw, positions_nodes, pheromone, weights, **
             surface_node.blit(weight_text, (text_x, text_y))
 
 graph, weights = file_reader(args.file)
+if not connectivity(graph):
+    print("Граф не зв'язний. Гамільтоновий цикл не існує.")
+    sys.exit()
 num_ants = args.ants
 iterations = args.iterations
 positions = node_position(graph)
