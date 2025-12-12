@@ -68,6 +68,10 @@ def ant_algorithm(num_ants: int, iterations: int, graph: dict, weight: dict):
             vertex_degree = len(connections)
             if vertex_degree < half:
                 dirak_theorem = False
+    if dirak_theorem:
+        print("Фан-факт: Теорема Дірака виконується")
+    else:
+        print("Фан-факт: Теорема Дірака не виконується")
 
     pheromone = {edge: 0.1 for edge in weight}
     edge_visits = {edge: 0 for edge in pheromone}
